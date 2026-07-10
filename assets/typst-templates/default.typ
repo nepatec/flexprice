@@ -15,8 +15,8 @@
 
 #let format-date = (date) => {
   let month-names = (
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    "Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+    "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"
   )
 
   let day = if date.day() < 10 {
@@ -62,13 +62,13 @@
   let result = ""
   for (i, c) in chars.enumerate() {
     if calc.rem-euclid(i, 3) == 0 and i != 0 {
-      result += ","
+      result += "."
     }
     result += c
   }
 
   if precision > 0 {
-    result.rev() + "." + decimal-part
+    result.rev() + "," + decimal-part
   } else {
     result.rev()
   }
@@ -185,22 +185,22 @@
         #banner-image
       ],
       [
-        #text(weight: "medium", size: 1.6em)[Invoice]
+        #text(weight: "medium", size: 1.6em)[Rechnung]
       ]
     )
     v(0.8em)
   } else {
-    text(weight: "bold", size: 2.2em, fill: styling.primary-color)[Invoice]
+    text(weight: "bold", size: 2.2em, fill: styling.primary-color)[Rechnung]
   }
 
   v(0.8em)
 
   // Invoice details in vertical format
   [
-    #text(weight: "medium", size: 10pt)[Invoice number:] #text(weight: "regular", size: 10pt, fill: rgb("#666666"))[#invoice-number] \
-    #text(weight: "medium", size: 10pt)[Date of issue:] #text(weight: "regular", size: 10pt, fill: rgb("#666666"))[#issuing-date-value] \
-    #text(weight: "medium", size: 10pt)[Date due:] #text(weight: "regular", size: 10pt, fill: rgb("#666666"))[#due-date] \
-    #text(weight: "medium", size: 10pt)[Service period:] #text(weight: "regular", size: 10pt, fill: rgb("#666666"))[#service-period-value]
+    #text(weight: "medium", size: 10pt)[Rechnungsnummer:] #text(weight: "regular", size: 10pt, fill: rgb("#666666"))[#invoice-number] \
+    #text(weight: "medium", size: 10pt)[Ausstellungsdatum:] #text(weight: "regular", size: 10pt, fill: rgb("#666666"))[#issuing-date-value] \
+    #text(weight: "medium", size: 10pt)[Fälligkeitsdatum:] #text(weight: "regular", size: 10pt, fill: rgb("#666666"))[#due-date] \
+    #text(weight: "medium", size: 10pt)[Servicezeitraum:] #text(weight: "regular", size: 10pt, fill: rgb("#666666"))[#service-period-value]
   ]
 
   line(length: 100%, stroke: 0.5pt + styling.line-color)
@@ -217,8 +217,8 @@
       #text(weight: "semibold", size: 10pt)[#biller.name] \
       #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#biller.at("email", default: "--")] \
       #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#biller.at("address", default: (:)).at("street", default: "--")] \
-      #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#biller.at("address", default: (:)).at("city", default: "--")] \
       #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#biller.at("address", default: (:)).at("postal-code", default: "--")]
+      #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#biller.at("address", default: (:)).at("city", default: "--")] \
     ],
     [
       #text(weight: "semibold", size: 11pt)[Bill to]
@@ -226,8 +226,8 @@
       #text(weight: "semibold", size: 10pt)[#recipient.name] \
       #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#recipient.at("email", default: "--")] \
       #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#recipient.at("address", default: (:)).at("street", default: "--")] \
-      #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#recipient.at("address", default: (:)).at("city", default: "--")] \
       #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#recipient.at("address", default: (:)).at("postal-code", default: "--")]
+      #text(weight: "regular", size: 9pt, fill: rgb("#666666"))[#recipient.at("address", default: (:)).at("city", default: "--")] \
     ]
   )
 
@@ -284,10 +284,10 @@
           bottom: if y == 0 { 1pt + rgb("#e9ecef") } else { 0.5pt + rgb("#e9ecef") },
         ),
       table.header(
-        [#text(weight: "semibold", size: 10pt, fill: rgb("#2c3e50"))[Item]],
+        [#text(weight: "semibold", size: 10pt, fill: rgb("#2c3e50"))[Artikel]],
         [#text(weight: "semibold", size: 10pt, fill: rgb("#2c3e50"))[Interval]],
-        [#text(weight: "semibold", size: 10pt, fill: rgb("#2c3e50"))[Quantity]],
-        [#text(weight: "semibold", size: 10pt, fill: rgb("#2c3e50"))[Amount]],
+        [#text(weight: "semibold", size: 10pt, fill: rgb("#2c3e50"))[Menge]],
+        [#text(weight: "semibold", size: 10pt, fill: rgb("#2c3e50"))[Betrag]],
       ),
         [#item.at("display_name", default: item.at("plan_display_name", default: "Plan"))], 
         [#interval],
@@ -371,8 +371,8 @@
       inset: 6pt,
       stroke: none,
       // Always show subtotal
-      [Subtotal], [#currency#format-currency(subtotal, precision: precision)],
-      
+      [Zwischensumme], [#currency#format-currency(subtotal, precision: precision)],
+
       // Show discount row only if there's a discount
       ..if discount > 0 { ([Discount], [−#currency#format-currency(discount, precision: precision)]) } else { () },
       
@@ -383,7 +383,7 @@
       ..if tax > 0 { ([Tax], [#currency#format-currency(tax, precision: precision)]) } else { () },
       
       table.hline(stroke: 0.5pt + black),
-      [*Net Payable*], [*#currency#format-currency(amount-remaining, precision: precision)*],
+      [*Zahlbetrag (Netto)*], [*#currency#format-currency(amount-remaining, precision: precision)*],
       
       // Show payment information if payment status is not pending or if amount paid > 0
       ..if payment-status != "" and payment-status != "pending" and amount-paid > 0 {
