@@ -9532,10 +9532,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AddonAssociationResponse"
-                  }
+                  "$ref": "#/components/schemas/ListAddonAssociationsResponse"
                 }
               }
             }
@@ -14870,6 +14867,20 @@
   },
   "components": {
     "schemas": {
+      "ListAddonAssociationsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddonAssociationResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
+          }
+        }
+      },
       "ListAddonsResponse": {
         "type": "object",
         "properties": {
