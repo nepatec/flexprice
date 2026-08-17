@@ -83,7 +83,6 @@ func runClickHouseMigrations(ctx context.Context, cfg *config.Configuration, dir
 	if err != nil {
 		return fmt.Errorf("open clickhouse: %w", err)
 	}
-	defer conn.Close()
 
 	if err := conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", db)); err != nil {
 		return fmt.Errorf("create database %q: %w", db, err)
