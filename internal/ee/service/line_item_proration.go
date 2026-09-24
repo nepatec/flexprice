@@ -144,6 +144,9 @@ func (s *lineItemProrationService) Apply(ctx context.Context, req LineItemProrat
 	}
 
 	sub := req.Subscription
+	if sub.SubscriptionStatus == types.SubscriptionStatusDraft {
+		return nil
+	}
 
 	if summary.TotalChargeAmount.GreaterThan(decimal.Zero) && len(summary.ChargeLineItems) > 0 {
 		invoiceSvc := NewInvoiceService(s.params)
