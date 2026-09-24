@@ -2040,6 +2040,11 @@ func (s *subscriptionService) UpdateSubscription(ctx context.Context, subscripti
 		subscription.EndDate = req.CancelAt
 	}
 
+	// Update metadata if provided
+	if req.Metadata != nil {
+		subscription.Metadata = req.Metadata
+	}
+
 	subscription.CancelAtPeriodEnd = req.CancelAtPeriodEnd
 
 	// Update the subscription in the database

@@ -22315,6 +22315,13 @@
                 "cancel_at_period_end": {
                     "type": "boolean"
                 },
+                "metadata": {
+                    "description": "metadata contains updated key-value pairs that will replace existing metadata",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "parent_subscription_id": {
                     "description": "ParentSubscriptionID sets or clears the parent subscription. Omit to leave unchanged; send \"\" to clear.",
                     "type": "string"
