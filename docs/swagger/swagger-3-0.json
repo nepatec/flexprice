@@ -32962,6 +32962,13 @@
             "type": "boolean",
             "description": "Pointer so omitting the field leaves the stored value unchanged; sending it sets the flag."
           },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "metadata contains updated key-value pairs that will replace existing metadata"
+          },
           "parent_subscription_id": {
             "type": "string",
             "description": "ParentSubscriptionID sets or clears the parent subscription. Omit to leave unchanged; send \"\" to clear."

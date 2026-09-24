@@ -759,6 +759,9 @@ type UpdateSubscriptionRequest struct {
 	// Pointer so omitting the field leaves the stored value unchanged; sending it sets the flag.
 	CancelAtPeriodEnd *bool `json:"cancel_at_period_end,omitempty"`
 
+	// metadata contains updated key-value pairs that will replace existing metadata
+	Metadata map[string]string `json:"metadata,omitempty"`
+
 	// ParentSubscriptionID sets or clears the parent subscription. Omit to leave unchanged; send "" to clear.
 	ParentSubscriptionID *string `json:"parent_subscription_id,omitempty"`
 

@@ -2102,6 +2102,11 @@ func (s *subscriptionService) UpdateSubscription(ctx context.Context, subscripti
 		}
 	}
 
+	// Update metadata if provided
+	if req.Metadata != nil {
+		subscription.Metadata = req.Metadata
+	}
+
 	// Update the subscription in the database
 	err = s.SubRepo.Update(ctx, subscription)
 	if err != nil {
