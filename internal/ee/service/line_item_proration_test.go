@@ -7,6 +7,7 @@ import (
 	"github.com/flexprice/flexprice/internal/domain/customer"
 	"github.com/flexprice/flexprice/internal/domain/price"
 	"github.com/flexprice/flexprice/internal/domain/subscription"
+	ierr "github.com/flexprice/flexprice/internal/errors"
 	"github.com/flexprice/flexprice/internal/testutil"
 	"github.com/flexprice/flexprice/internal/types"
 	"github.com/shopspring/decimal"
@@ -653,6 +654,53 @@ func (s *LineItemProrationServiceSuite) TestApply_NoneProrationBehavior_IsNoOp()
 		QueryFilter: types.NewDefaultQueryFilter(),
 	})
 	s.Empty(wallets, "no wallet expected for behavior=none")
+}
+
+// TestApply_DraftSubscription_IsRejected guards the backstop: callers must resolve drafts
+// to ProrationBehaviorNone, so reaching Apply with a draft is an error and settles nothing.
+func (s *LineItemProrationServiceSuite) TestApply_DraftSubscription_IsRejected() {
+	ctx := s.GetContext()
+	effectiveDate := time.Date(2026, 4, 11, 0, 0, 0, 0, time.UTC)
+
+	draftSub := s.subCopyWithPeriod(s.td.periodStart, s.td.periodEnd)
+	draftSub.SubscriptionStatus = types.SubscriptionStatusDraft
+
+	tests := []struct {
+		name   string
+		action types.ProrationAction
+	}{
+		{name: "add item", action: types.ProrationActionAddItem},
+		{name: "remove item", action: types.ProrationActionRemoveItem},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			err := s.svc.Apply(ctx, LineItemProrationRequest{
+				Subscription:   draftSub,
+				EffectiveDate:  effectiveDate,
+				Behavior:       types.ProrationBehaviorCreateProrations,
+				IdempotencyKey: "test_apply_draft_" + string(tt.action),
+				Entries: []LineItemProrationEntry{{
+					LineItem:    s.td.lineItem,
+					Price:       s.td.fixedPrice,
+					Action:      tt.action,
+					NewQuantity: s.td.lineItem.Quantity,
+				}},
+			})
+			s.Error(err)
+			s.True(ierr.IsValidation(err))
+		})
+	}
+
+	invoices, _ := s.GetStores().InvoiceRepo.List(ctx, &types.InvoiceFilter{
+		QueryFilter: types.NewDefaultQueryFilter(),
+	})
+	s.Empty(invoices, "no invoice expected for a draft subscription")
+
+	wallets, _ := s.GetStores().WalletRepo.GetWalletsByFilter(ctx, &types.WalletFilter{
+		QueryFilter: types.NewDefaultQueryFilter(),
+	})
+	s.Empty(wallets, "no wallet credit expected for a draft subscription")
 }
 
 // TestApply_OnetimeRemove_IsNoOp confirms that removing a onetime addon

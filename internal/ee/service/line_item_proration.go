@@ -11,6 +11,7 @@ import (
 	"github.com/flexprice/flexprice/internal/domain/price"
 	"github.com/flexprice/flexprice/internal/domain/proration"
 	"github.com/flexprice/flexprice/internal/domain/subscription"
+	ierr "github.com/flexprice/flexprice/internal/errors"
 	"github.com/flexprice/flexprice/internal/idempotency"
 	"github.com/flexprice/flexprice/internal/types"
 	"github.com/shopspring/decimal"
@@ -136,6 +137,16 @@ func (s *lineItemProrationService) Compute(ctx context.Context, req LineItemPror
 func (s *lineItemProrationService) Apply(ctx context.Context, req LineItemProrationRequest) error {
 	if req.Behavior != types.ProrationBehaviorCreateProrations {
 		return nil
+	}
+
+	// Backstop: callers must resolve drafts to ProrationBehaviorNone before getting here.
+	if req.Subscription.SubscriptionStatus == types.SubscriptionStatusDraft {
+		return ierr.NewError("cannot settle proration for a draft subscription").
+			WithHint("Draft subscriptions are billed in full on activation; proration must not be applied").
+			WithReportableDetails(map[string]any{
+				"subscription_id": req.Subscription.ID,
+			}).
+			Mark(ierr.ErrValidation)
 	}
 
 	summary, err := s.Compute(ctx, req)

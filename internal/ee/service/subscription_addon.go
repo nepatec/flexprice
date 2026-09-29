@@ -28,6 +28,10 @@ type addonAttachParams struct {
 	requestedStart time.Time
 	effectiveDate  time.Time
 
+	// prorationBehavior is the behavior actually applied, which may differ from the
+	// requested one (drafts never prorate). Read this instead of request.ProrationBehavior.
+	prorationBehavior types.ProrationBehavior
+
 	// isReplay marks a plan whose association is an existing pending row being activated
 	// rather than a new one being created.
 	isReplay bool
@@ -90,6 +94,13 @@ func (p *addonAttachParams) getPriceMap() map[string]*dto.PriceResponse {
 	return p.priceMap
 }
 
+func (p *addonAttachParams) getProrationBehavior() types.ProrationBehavior {
+	if p == nil {
+		return types.ProrationBehaviorNone
+	}
+	return p.prorationBehavior
+}
+
 func (p *addonAttachParams) isReplayAttach() bool {
 	if p == nil {
 		return false
@@ -110,9 +121,9 @@ func (s *subscriptionService) calculateAddonProration(
 	params *addonAttachParams,
 ) (*LineItemProrationSummary, error) {
 	sub := params.getSubscription()
-	req := params.getRequest()
+	behavior := params.getProrationBehavior()
 
-	if req.ProrationBehavior != types.ProrationBehaviorCreateProrations {
+	if behavior != types.ProrationBehaviorCreateProrations {
 		return &LineItemProrationSummary{
 			Currency:          sub.Currency,
 			TotalChargeAmount: decimal.Zero,
@@ -129,7 +140,7 @@ func (s *subscriptionService) calculateAddonProration(
 		Subscription:  sub,
 		Entries:       entries,
 		EffectiveDate: params.getEffectiveDate(),
-		Behavior:      req.ProrationBehavior,
+		Behavior:      behavior,
 	})
 }
 

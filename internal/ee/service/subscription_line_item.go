@@ -384,6 +384,9 @@ func (s *subscriptionService) deleteSubscriptionLineItem(ctx context.Context, li
 		if err != nil {
 			s.Logger.Info(ctx, "could not load subscription for delete proration",
 				"line_item_id", lineItemID, "error", err)
+		} else if s.isDraftSubscription(sub) {
+			s.Logger.Info(ctx, "skipping delete proration for draft subscription",
+				"line_item_id", lineItemID, "subscription_id", sub.ID)
 		} else {
 			period, err := types.FindPeriodForDate(&types.FindPeriodForDateParams{
 				Target:           effectiveFrom,

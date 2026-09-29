@@ -8514,6 +8514,65 @@ func (s *SubscriptionServiceSuite) TestCreateSubscription_TrialStart_Invoice() {
 	}
 }
 
+// A draft has no real billing period and activation bills addon line items in full, so
+// create_prorations on a draft attach must not raise a (finalized) one-off invoice.
+func (s *SubscriptionServiceSuite) TestAddAddonToSubscription_Draft_CreateProrations_NoInvoice() {
+	ctx := s.GetContext()
+	subSvc := s.service.(*subscriptionService)
+	addonID := "addon_draft_proration_test"
+
+	s.Require().NoError(subSvc.AddonRepo.Create(ctx, &addon.Addon{
+		ID:        addonID,
+		LookupKey: addonID,
+		Name:      "Draft Proration Addon",
+		BaseModel: types.GetDefaultBaseModel(ctx),
+	}))
+	s.Require().NoError(s.GetStores().PriceRepo.Create(ctx, &price.Price{
+		ID:                 "price_addon_draft_proration_test",
+		Amount:             decimal.NewFromFloat(10),
+		Currency:           "usd",
+		EntityType:         types.PRICE_ENTITY_TYPE_ADDON,
+		EntityID:           addonID,
+		Type:               types.PRICE_TYPE_FIXED,
+		BillingPeriod:      types.BILLING_PERIOD_MONTHLY,
+		BillingPeriodCount: 1,
+		BillingModel:       types.BILLING_MODEL_FLAT_FEE,
+		InvoiceCadence:     types.InvoiceCadenceAdvance,
+		BaseModel:          types.GetDefaultBaseModel(ctx),
+	}))
+
+	draftStart := time.Now().UTC().Add(-10 * 24 * time.Hour)
+	draftResp, err := s.service.CreateSubscription(ctx, dto.CreateSubscriptionRequest{
+		CustomerID:         s.testData.customer.ID,
+		PlanID:             s.testData.plan.ID,
+		StartDate:          lo.ToPtr(draftStart),
+		Currency:           "usd",
+		BillingPeriod:      types.BILLING_PERIOD_MONTHLY,
+		BillingPeriodCount: 1,
+		BillingCycle:       types.BillingCycleAnniversary,
+		CollectionMethod:   lo.ToPtr(types.CollectionMethodSendInvoice),
+		SubscriptionStatus: types.SubscriptionStatusDraft,
+	})
+	s.Require().NoError(err)
+	s.Require().Equal(types.SubscriptionStatusDraft, draftResp.SubscriptionStatus)
+
+	resp, err := s.service.AddAddonToSubscription(ctx, &dto.AddAddonRequest{
+		SubscriptionID: draftResp.ID,
+		AddAddonToSubscriptionRequest: dto.AddAddonToSubscriptionRequest{
+			AddonID:           addonID,
+			ProrationBehavior: types.ProrationBehaviorCreateProrations,
+		},
+	})
+	s.Require().NoError(err)
+	s.Nil(resp.Invoice)
+
+	invoiceFilter := types.NewInvoiceFilter()
+	invoiceFilter.SubscriptionID = draftResp.ID
+	invoices, err := s.GetStores().InvoiceRepo.List(ctx, invoiceFilter)
+	s.Require().NoError(err)
+	s.Empty(invoices, "draft addon attach must not create a proration invoice")
+}
+
 func (s *SubscriptionServiceSuite) TestAddAddonToSubscription_Draft() {
 	ctx := s.GetContext()
 

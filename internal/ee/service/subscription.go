@@ -5071,16 +5071,22 @@ func (s *subscriptionService) createAddonAttachParams(
 		return nil, err
 	}
 
+	// A draft has no real billing period yet: activation re-anchors the addon line items
+	// (shiftAddonLineItemDates) and bills them in full on the opening invoice, so prorating
+	// now would charge against a placeholder period and double-bill the addon.
+	prorationBehavior := lo.Ternary(s.isDraftSubscription(sub), types.ProrationBehaviorNone, req.ProrationBehavior)
+
 	return &addonAttachParams{
-		subscription:   sub,
-		request:        req,
-		association:    addonAssociation,
-		lineItems:      lineItems,
-		bucketCfgs:     lineItemBucketCfgs,
-		priceMap:       priceMap,
-		requestedStart: addonRequestedStart,
-		effectiveDate:  prorationEffectiveDate,
-		isReplay:       existing != nil,
+		subscription:      sub,
+		request:           req,
+		association:       addonAssociation,
+		lineItems:         lineItems,
+		bucketCfgs:        lineItemBucketCfgs,
+		priceMap:          priceMap,
+		requestedStart:    addonRequestedStart,
+		effectiveDate:     prorationEffectiveDate,
+		prorationBehavior: prorationBehavior,
+		isReplay:          existing != nil,
 	}, nil
 }
 
@@ -5102,7 +5108,7 @@ func (s *subscriptionService) persistAddonAttach(ctx context.Context, params *ad
 	addonRequestedStart := params.getRequestedStart()
 	existing := params.isReplayAttach()
 
-	creditGrantProration := s.addonCreditGrantProration(ctx, sub, addonRequestedStart, req.ProrationBehavior)
+	creditGrantProration := s.addonCreditGrantProration(ctx, sub, addonRequestedStart, params.getProrationBehavior())
 
 	err := s.DB.WithTx(ctx, func(ctx context.Context) error {
 		if len(req.OverrideLineItems) > 0 {
@@ -5157,7 +5163,7 @@ func (s *subscriptionService) settleAddonAttachPayLater(ctx context.Context, par
 	key := params.prorationIdempotencyKey()
 
 	if err := s.applyAddonAddProration(
-		ctx, sub, params.getLineItems(), effectiveDate, req.ProrationBehavior, key,
+		ctx, sub, params.getLineItems(), effectiveDate, params.getProrationBehavior(), key,
 	); err != nil {
 		s.Logger.Error(ctx, "failed to create proration invoice for addon add; addon was persisted and is UNBILLED for this period",
 			"error", err,
@@ -5663,7 +5669,8 @@ func (s *subscriptionService) RemoveAddonFromSubscription(ctx context.Context, r
 
 	// Issue wallet credit for unused prepaid time if proration is requested.
 	// Onetime addons (EndDate set) are skipped automatically inside LineItemProrationService.
-	if sub != nil && effectiveEndDate != nil {
+	// Drafts are skipped: nothing has been billed yet, so there is no prepaid time to refund.
+	if sub != nil && effectiveEndDate != nil && !s.isDraftSubscription(sub) {
 		if err := s.applyAddonRemoveProration(
 			ctx, sub, lineItems,
 			association.ID, *effectiveEndDate,
