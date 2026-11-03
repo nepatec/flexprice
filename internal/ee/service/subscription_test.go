@@ -9146,6 +9146,41 @@ func (s *SubscriptionServiceSuite) TestActivateDraftSubscription_OnetimeAddon_En
 	s.True(associations[0].EndDate.Equal(expectedEnd), "one-time addon association EndDate should be recomputed from activation start date")
 }
 
+// Pay-first flows activate a draft at its original start date, which is also its trial start. The $0
+// trial-start invoice stays pending for send_invoice, yet the subscription must be trialing.
+func (s *SubscriptionServiceSuite) TestActivateDraftSubscription_TrialAtDraftStartIsTrialing() {
+	ctx := s.GetContext()
+	s.seedFixedPricePlan("plan_trial_draft_activate", decimal.NewFromInt(50), 14)
+
+	t0 := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	resp, err := s.service.CreateSubscription(ctx, dto.CreateSubscriptionRequest{
+		CustomerID:         s.testData.customer.ID,
+		PlanID:             "plan_trial_draft_activate",
+		StartDate:          lo.ToPtr(t0),
+		Currency:           "usd",
+		BillingPeriod:      types.BILLING_PERIOD_MONTHLY,
+		BillingPeriodCount: 1,
+		BillingCycle:       types.BillingCycleAnniversary,
+		CollectionMethod:   lo.ToPtr(types.CollectionMethodSendInvoice),
+		PaymentBehavior:    lo.ToPtr(types.PaymentBehaviorDefaultIncomplete),
+		SubscriptionStatus: types.SubscriptionStatusDraft,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(resp.TrialStart, "the trial inherited from the plan's price must be kept on the draft")
+
+	activated, err := s.service.ActivateDraftSubscription(ctx, resp.ID, dto.ActivateDraftSubscriptionRequest{
+		StartDate: lo.ToPtr(t0),
+	})
+	s.Require().NoError(err)
+
+	s.Equal(types.SubscriptionStatusTrialing, activated.SubscriptionStatus)
+	s.Require().NotNil(activated.TrialEnd)
+	s.True(activated.TrialEnd.Equal(t0.AddDate(0, 0, 14)), "the trial must start at the activation start date")
+	s.Require().NotNil(activated.LatestInvoice)
+	s.Equal(string(types.InvoiceBillingReasonSubscriptionTrialStart), activated.LatestInvoice.BillingReason)
+	s.True(activated.LatestInvoice.AmountDue.IsZero())
+}
+
 func (s *SubscriptionServiceSuite) TestProcessSubscriptionPeriod_FiresScheduledCancellationTermination() {
 	ctx := s.GetContext()
 	subService := s.service.(*subscriptionService)

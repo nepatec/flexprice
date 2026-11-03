@@ -824,7 +824,9 @@ func (s *subscriptionService) ActivateDraftSubscription(ctx context.Context, sub
 		return nil, err
 	}
 
-	isTrialActivation := sub.TrialStart != nil && sub.TrialEnd != nil && newStartDate.After(*sub.TrialStart) && newStartDate.Before(*sub.TrialEnd)
+	// The trial window of a draft starts at its own start date, so activating exactly at that date
+	// (e.g. pay-first flows that keep the original start date) must still start the trial.
+	isTrialActivation := sub.TrialStart != nil && sub.TrialEnd != nil && !newStartDate.Before(*sub.TrialStart) && newStartDate.Before(*sub.TrialEnd)
 	var billingReason types.InvoiceBillingReason
 	if isTrialActivation {
 		trialDuration := sub.TrialEnd.Sub(lo.FromPtr(sub.TrialStart))
