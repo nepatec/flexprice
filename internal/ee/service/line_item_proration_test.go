@@ -300,6 +300,63 @@ func (s *LineItemProrationServiceSuite) TestCompute_AddItem_MidPeriod() {
 	s.Len(summary.ChargeLineItems, 1)
 }
 
+func (s *LineItemProrationServiceSuite) TestCompute_AddItem_OnetimePrice() {
+	ctx := s.GetContext()
+	effectiveDate := time.Date(2026, 4, 11, 0, 0, 0, 0, time.UTC) // Apr 11
+
+	tests := []struct {
+		name           string
+		invoiceCadence types.InvoiceCadence
+		expected       decimal.Decimal
+	}{
+		{"advance is charged in full", types.InvoiceCadenceAdvance, decimal.NewFromInt(100)},
+		{"arrear is billed at period end", types.InvoiceCadenceArrear, decimal.Zero},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			onetimePrice := &price.Price{
+				ID:                 types.GenerateUUIDWithPrefix(types.UUID_PREFIX_PRICE),
+				Amount:             decimal.NewFromInt(100),
+				Currency:           "usd",
+				Type:               types.PRICE_TYPE_FIXED,
+				BillingPeriod:      types.BILLING_PERIOD_ONETIME,
+				BillingPeriodCount: 1,
+				BillingModel:       types.BILLING_MODEL_FLAT_FEE,
+				InvoiceCadence:     tc.invoiceCadence,
+				BaseModel:          types.GetDefaultBaseModel(ctx),
+			}
+			s.NoError(s.GetStores().PriceRepo.Create(ctx, onetimePrice))
+
+			onetimeItem := *s.td.lineItem
+			onetimeItem.PriceID = onetimePrice.ID
+			onetimeItem.BillingPeriod = types.BILLING_PERIOD_ONETIME
+			onetimeItem.InvoiceCadence = tc.invoiceCadence
+
+			req := LineItemProrationRequest{
+				Subscription:   s.subCopyWithPeriod(s.td.periodStart, s.td.periodEnd),
+				EffectiveDate:  effectiveDate,
+				Behavior:       types.ProrationBehaviorCreateProrations,
+				IdempotencyKey: "test_add_onetime",
+				Entries: []LineItemProrationEntry{{
+					LineItem:    &onetimeItem,
+					NewPrice:    onetimePrice,
+					Action:      types.ProrationActionAddItem,
+					NewQuantity: onetimeItem.Quantity,
+				}},
+			}
+
+			summary, err := s.svc.Compute(ctx, req)
+			s.NoError(err)
+			s.NotNil(summary)
+
+			s.True(summary.TotalChargeAmount.Equal(tc.expected),
+				"onetime add charge mismatch: want %s, got %s", tc.expected, summary.TotalChargeAmount)
+			s.True(summary.TotalCreditAmount.IsZero())
+		})
+	}
+}
+
 func (s *LineItemProrationServiceSuite) TestCompute_AddItem_LastSecond() {
 	ctx := s.GetContext()
 	effectiveDate := s.td.periodEnd.Add(-time.Second)
