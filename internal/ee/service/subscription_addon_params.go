@@ -25,6 +25,10 @@ type addonAttachParams struct {
 	// coupons is keyed by line item ID: overrides repoint a line item's price after Resolve.
 	coupons map[string][]types.CouponRef
 
+	// prorationBehavior is the behavior actually applied, which may differ from the
+	// requested one (drafts never prorate). Read this instead of request.ProrationBehavior.
+	prorationBehavior types.ProrationBehavior
+
 	// isReplay marks a plan whose association is an existing pending row being activated
 	// rather than a new one being created.
 	isReplay bool
@@ -92,6 +96,13 @@ func (p *addonAttachParams) getCoupons() map[string][]types.CouponRef {
 		return nil
 	}
 	return p.coupons
+}
+
+func (p *addonAttachParams) getProrationBehavior() types.ProrationBehavior {
+	if p == nil {
+		return types.ProrationBehaviorNone
+	}
+	return p.prorationBehavior
 }
 
 func (p *addonAttachParams) isReplayAttach() bool {

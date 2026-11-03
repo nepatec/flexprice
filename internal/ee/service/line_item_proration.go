@@ -374,6 +374,19 @@ func (s *lineItemProrationService) Settle(ctx context.Context, req *SettleProrat
 		return nil, err
 	}
 
+	net := req.Quote.NetAmount()
+
+	// Backstop: callers must resolve drafts to ProrationBehaviorNone before getting here.
+	if req.Mode != SettleModePreview && !net.IsZero() &&
+		req.Subscription.SubscriptionStatus == types.SubscriptionStatusDraft {
+		return nil, ierr.NewError("cannot settle proration for a draft subscription").
+			WithHint("Draft subscriptions are billed in full on activation; proration must not be applied").
+			WithReportableDetails(map[string]any{
+				"subscription_id": req.Subscription.ID,
+			}).
+			Mark(ierr.ErrValidation)
+	}
+
 	invoicingSub, err := invoicingSubscription(ctx, s.params, req.Subscription)
 	if err != nil {
 		return nil, err
@@ -381,7 +394,6 @@ func (s *lineItemProrationService) Settle(ctx context.Context, req *SettleProrat
 	req.Subscription = invoicingSub
 
 	result := &SettleProrationResult{Changed: make([]dto.ChangedInvoice, 0, 1)}
-	net := req.Quote.NetAmount()
 
 	if req.Mode == SettleModeDraft && !net.IsPositive() {
 		return nil, ierr.NewError("no proration charge to collect via checkout").

@@ -5222,16 +5222,21 @@ func (s *subscriptionService) createAddonAttachParams(
 		return nil, err
 	}
 
+	// Activation re-anchors a draft's addon line items and bills them in full on the opening
+	// invoice, so prorating against the draft's placeholder period would double-bill the addon.
+	prorationBehavior := lo.Ternary(s.isDraftSubscription(sub), types.ProrationBehaviorNone, req.ProrationBehavior)
+
 	return &addonAttachParams{
-		subscription:   sub,
-		request:        req,
-		association:    addonAssociation,
-		lineItems:      lineItems,
-		bucketCfgs:     lineItemBucketCfgs,
-		priceMap:       priceMap,
-		requestedStart: addonRequestedStart,
-		effectiveDate:  prorationEffectiveDate,
-		isReplay:       existing != nil,
+		subscription:      sub,
+		request:           req,
+		association:       addonAssociation,
+		lineItems:         lineItems,
+		bucketCfgs:        lineItemBucketCfgs,
+		priceMap:          priceMap,
+		requestedStart:    addonRequestedStart,
+		effectiveDate:     prorationEffectiveDate,
+		prorationBehavior: prorationBehavior,
+		isReplay:          existing != nil,
 	}, nil
 }
 

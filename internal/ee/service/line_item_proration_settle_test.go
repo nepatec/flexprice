@@ -8,6 +8,7 @@ import (
 	"github.com/flexprice/flexprice/internal/domain/addonassociation"
 	"github.com/flexprice/flexprice/internal/domain/plan"
 	"github.com/flexprice/flexprice/internal/domain/subscription"
+	ierr "github.com/flexprice/flexprice/internal/errors"
 	"github.com/flexprice/flexprice/internal/types"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
@@ -284,6 +285,55 @@ func (s *LineItemProrationServiceSuite) TestSettle_RejectsInvalidRequest() {
 	s.Run("nil request", func() {
 		_, err := s.svc.Settle(s.GetContext(), nil)
 		s.Require().Error(err)
+	})
+}
+
+// TestSettle_DraftSubscription_IsRejected guards the backstop: callers must resolve drafts
+// to ProrationBehaviorNone, so settling a non-zero net for a draft is an error and writes nothing.
+func (s *LineItemProrationServiceSuite) TestSettle_DraftSubscription_IsRejected() {
+	effectiveDate := time.Date(2026, 4, 11, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name   string
+		mode   SettleMode
+		charge bool
+	}{
+		{name: "issue net charge", mode: SettleModeIssue, charge: true},
+		{name: "issue net credit", mode: SettleModeIssue, charge: false},
+		{name: "draft net charge", mode: SettleModeDraft, charge: true},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			quote, _ := s.mixedQuote(effectiveDate)
+			if tt.charge {
+				quote.TotalChargeAmount = quote.TotalChargeAmount.Add(decimal.NewFromInt(10))
+				quote.ChargeLineItems[0].Amount = quote.ChargeLineItems[0].Amount.Add(decimal.NewFromInt(10))
+			} else {
+				quote.TotalCreditAmount = quote.TotalCreditAmount.Add(decimal.NewFromInt(10))
+			}
+
+			req := s.settleReq(quote, effectiveDate, tt.mode)
+			req.Subscription.SubscriptionStatus = types.SubscriptionStatusDraft
+			invoicesBefore := s.invoiceCount()
+			walletBefore := s.walletBalance()
+
+			_, err := s.svc.Settle(s.GetContext(), req)
+			s.Require().Error(err)
+			s.True(ierr.IsValidation(err))
+			s.Equal(invoicesBefore, s.invoiceCount(), "no invoice for a draft subscription")
+			s.Equal(walletBefore.String(), s.walletBalance().String(), "no wallet credit for a draft subscription")
+		})
+	}
+
+	s.Run("zero net settles nothing", func() {
+		quote, _ := s.mixedQuote(effectiveDate)
+		req := s.settleReq(quote, effectiveDate, SettleModeIssue)
+		req.Subscription.SubscriptionStatus = types.SubscriptionStatusDraft
+
+		result, err := s.svc.Settle(s.GetContext(), req)
+		s.Require().NoError(err)
+		s.Empty(result.Changed)
 	})
 }
 

@@ -306,12 +306,15 @@ func (s *subscriptionService) createAddonDetachParams(
 		}
 	}
 
+	// Drafts are never prorated: nothing has been billed yet, so there is no prepaid time to refund.
+	behavior := lo.Ternary(s.isDraftSubscription(sub), types.ProrationBehaviorNone, req.ProrationBehavior)
+
 	return &addonDetachParams{
 		subscription:  sub,
 		association:   association,
 		lineItems:     activeLineItems,
 		effectiveDate: effectiveEndDate,
-		behavior:      req.ProrationBehavior,
+		behavior:      behavior,
 		reason:        req.Reason,
 	}, nil
 }

@@ -389,7 +389,7 @@ func (s *addonChangeService) grantChangeRequest(config *addonChangeConfig) Grant
 			EffectiveDate:     attach.getEffectiveDate(),
 			RequestedDate:     attach.getRequestedStart(),
 			EndDate:           attach.getAssociation().EndDate,
-			ProrationSettings: req.ProrationSettings.WithDefault(req.ProrationBehavior),
+			ProrationSettings: req.ProrationSettings.WithDefault(attach.getProrationBehavior()),
 			Origin:            grantProrationSourceAddonAttach,
 			AddonID:           req.AddonID,
 		})
@@ -478,7 +478,7 @@ func (s *addonChangeService) prorationGroups(ctx context.Context, config *addonC
 	}
 
 	for _, attach := range config.getAttaches() {
-		if attach.getRequest().ProrationBehavior != types.ProrationBehaviorCreateProrations {
+		if attach.getProrationBehavior() != types.ProrationBehaviorCreateProrations {
 			continue
 		}
 
@@ -929,7 +929,7 @@ func addonChangeCheckoutParams(
 			AssociationID:     attach.getAssociation().ID,
 			AddonID:           req.AddonID,
 			Cadence:           req.Cadence,
-			ProrationBehavior: req.ProrationBehavior,
+			ProrationBehavior: attach.getProrationBehavior(),
 			StartDate:         attach.getRequestedStart(),
 			Coupons:           lo.Flatten(lo.Values(attach.getCoupons())),
 			PriceOverrides:    overrides[attach.getAssociation().ID],
