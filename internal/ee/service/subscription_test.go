@@ -2368,6 +2368,35 @@ func (s *SubscriptionServiceSuite) TestCancelSubscription_RejectedForInheritedSu
 	s.Contains(err.Error(), "inherited subscription cannot be cancelled directly")
 }
 
+// Cancelling a draft (e.g. an abandoned cart) discards it, as nothing was billed yet.
+func (s *SubscriptionServiceSuite) TestCancelSubscription_DraftIsArchived() {
+	ctx := s.GetContext()
+	s.seedFixedPricePlan("plan_cancel_draft", decimal.NewFromInt(50), 0)
+
+	req := s.checkoutCreateRequest("plan_cancel_draft")
+	req.Checkout = nil
+	req.SubscriptionStatus = types.SubscriptionStatusDraft
+	draft, err := s.service.CreateSubscription(ctx, req)
+	s.Require().NoError(err)
+
+	_, err = s.service.CancelSubscription(ctx, draft.ID, &dto.CancelSubscriptionRequest{
+		CancellationType: types.CancellationTypeEndOfPeriod,
+	})
+	s.Require().Error(err)
+	s.True(ierr.IsValidation(err), "a draft has no period to end")
+
+	resp, err := s.service.CancelSubscription(ctx, draft.ID, &dto.CancelSubscriptionRequest{
+		CancellationType: types.CancellationTypeImmediate,
+	})
+	s.Require().NoError(err)
+	s.Equal(draft.ID, resp.SubscriptionID)
+
+	archived, err := s.GetStores().SubscriptionRepo.Get(ctx, draft.ID)
+	s.Require().NoError(err)
+	s.Equal(types.StatusArchived, archived.Status)
+	s.Equal(types.SubscriptionStatusDraft, archived.SubscriptionStatus, "a discarded draft was never cancelled")
+}
+
 func (s *SubscriptionServiceSuite) TestCreateSubscriptionSubscriberRejectedWhenChildHasInheritedSubscription() {
 	ctx := s.GetContext()
 

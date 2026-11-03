@@ -908,8 +908,10 @@ func (s *subscriptionService) ActivateDraftSubscription(ctx context.Context, sub
 		targetStatus := sub.SubscriptionStatus
 
 		if sub.SubscriptionStatus == types.SubscriptionStatusIncomplete || sub.SubscriptionStatus == types.SubscriptionStatusDraft {
-			if invoice == nil || invoice.PaymentStatus == types.PaymentStatusSucceeded {
-				// No invoice created or payment succeeded - activate subscription
+			// The $0 trial-start invoice stays PENDING for send_invoice (see attemptPaymentForSubscriptionInvoice),
+			// but there is nothing to collect, so a trial activation is trialing like a direct trial create.
+			if invoice == nil || invoice.PaymentStatus == types.PaymentStatusSucceeded || isTrialActivation {
+				// No invoice created, payment succeeded or trial started - activate subscription
 				if isTrialActivation {
 					targetStatus = types.SubscriptionStatusTrialing
 				} else {
@@ -2151,9 +2153,44 @@ func (s *subscriptionService) CancelSubscription(
 	}
 
 	// Step 3: Validate subscription state
-	// Reject cancellation of draft subscriptions
-	if err := s.validateNotDraftSubscription(subscription, "cancellation"); err != nil {
-		return nil, err
+	// Draft subscriptions were never billed, so they are discarded (archived) like an expired checkout's draft
+	if subscription.SubscriptionStatus == types.SubscriptionStatusDraft {
+		if req.CancellationType != types.CancellationTypeImmediate {
+			return nil, ierr.NewError("draft subscription can only be cancelled immediately").
+				WithHint("Use cancellation_type immediate to discard a draft subscription").
+				WithReportableDetails(map[string]interface{}{
+					"subscription_id":   subscriptionID,
+					"cancellation_type": req.CancellationType,
+				}).
+				Mark(ierr.ErrValidation)
+		}
+
+		// The archival only logs its failures, so check that the draft is gone
+		s.archiveDraftCheckoutSubscription(ctx, subscriptionID)
+		archived, err := s.SubRepo.Get(ctx, subscriptionID)
+		if err != nil && !ierr.IsNotFound(err) {
+			return nil, err
+		}
+		if err == nil && archived.Status == types.StatusPublished {
+			return nil, ierr.NewError("failed to archive draft subscription").
+				WithHint("Please retry the cancellation").
+				WithReportableDetails(map[string]interface{}{
+					"subscription_id": subscriptionID,
+				}).
+				Mark(ierr.ErrInternal)
+		}
+
+		s.Logger.Info(ctx, "draft subscription discarded", "subscription_id", subscriptionID)
+		now := clock.Now()
+		return &dto.CancelSubscriptionResponse{
+			SubscriptionID:   subscriptionID,
+			CancellationType: req.CancellationType,
+			EffectiveDate:    now,
+			Status:           subscription.SubscriptionStatus,
+			Reason:           req.Reason,
+			Message:          "Draft subscription discarded (archived)",
+			ProcessedAt:      now,
+		}, nil
 	}
 
 	if subscription.SubscriptionStatus == types.SubscriptionStatusCancelled {
