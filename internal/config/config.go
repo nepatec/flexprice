@@ -1301,10 +1301,15 @@ func NewConfig() (*Configuration, error) {
 		cfg.Auth.APIKey.Keys = apiKeys
 	}
 
-	// tenant webhook config
-	tenantWebhookConfig := make(map[string]TenantWebhookConfig)
-	if err := v.UnmarshalKey("webhook.tenants", &tenantWebhookConfig); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal webhook tenants config: %v", err)
+	// Step 7: Per-tenant webhook config.
+	// webhook.tenants is a map, which Viper cannot populate from the environment: a JSON
+	// env value arrives as a string that does not decode into a map, and per-field env
+	// vars for nested map entries are ignored. FLEXPRICE_WEBHOOK_TENANTS_JSON fills that
+	// gap. When set, it replaces webhook.tenants from config.yaml entirely (no merge), so
+	// endpoints and header secrets can be supplied per environment.
+	tenantWebhookConfig, err := parseTenantWebhookConfig(v, os.Getenv("FLEXPRICE_WEBHOOK_TENANTS_JSON"))
+	if err != nil {
+		return nil, err
 	}
 	cfg.Webhook.Tenants = tenantWebhookConfig
 	cfg.Webhook.normalizeTenantKeys()

@@ -1,8 +1,12 @@
 package config
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/spf13/viper"
 )
 
 // Webhook represents the configuration for the webhook system
@@ -21,12 +25,34 @@ type Webhook struct {
 	EventCascadingEnabled bool                           `mapstructure:"event_cascading_enabled" default:"false"`
 }
 
-// TenantWebhookConfig represents webhook configuration for a specific tenant
+// TenantWebhookConfig represents webhook configuration for a specific tenant.
+// The json tags serve FLEXPRICE_WEBHOOK_TENANTS_JSON and must match the
+// mapstructure (config.yaml) names.
 type TenantWebhookConfig struct {
-	Endpoint       string            `mapstructure:"endpoint"`
-	Headers        map[string]string `mapstructure:"headers"`
-	Enabled        bool              `mapstructure:"enabled"`
-	ExcludedEvents []string          `mapstructure:"excluded_events"`
+	Endpoint       string            `mapstructure:"endpoint" json:"endpoint"`
+	Headers        map[string]string `mapstructure:"headers" json:"headers"`
+	Enabled        bool              `mapstructure:"enabled" json:"enabled"`
+	ExcludedEvents []string          `mapstructure:"excluded_events" json:"excluded_events"`
+}
+
+func parseTenantWebhookConfig(v *viper.Viper, envJSON string) (map[string]TenantWebhookConfig, error) {
+	tenants := make(map[string]TenantWebhookConfig)
+	if strings.TrimSpace(envJSON) == "" {
+		if err := v.UnmarshalKey("webhook.tenants", &tenants); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal webhook tenants config: %v", err)
+		}
+		return tenants, nil
+	}
+
+	dec := json.NewDecoder(strings.NewReader(envJSON))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&tenants); err != nil {
+		return nil, fmt.Errorf("failed to parse FLEXPRICE_WEBHOOK_TENANTS_JSON: %v", err)
+	}
+	if dec.More() {
+		return nil, fmt.Errorf("failed to parse FLEXPRICE_WEBHOOK_TENANTS_JSON: unexpected data after the JSON object")
+	}
+	return tenants, nil
 }
 
 type Svix struct {
