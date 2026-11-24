@@ -961,6 +961,7 @@ func (s *subscriptionService) ActivateDraftSubscription(ctx context.Context, sub
 		return nil, err
 	}
 	NotifySubscriptionChanged(ctx, s.ServiceParams, sub.ID)
+	s.openEntitlementGrantsAfterActivation(ctx, sub)
 
 	// Create response
 	response := &dto.SubscriptionResponse{Subscription: sub}
@@ -974,6 +975,24 @@ func (s *subscriptionService) ActivateDraftSubscription(ctx context.Context, sub
 	s.publishSystemEvent(ctx, types.WebhookEventSubscriptionActivated, sub.ID)
 
 	return response, nil
+}
+
+// openEntitlementGrantsAfterActivation opens the entitlement grant windows of a subscription
+// that just became active or trialing. The refresh before its first invoice ran while it was
+// still draft or incomplete and only covers active subscriptions. Never fails the activation:
+// the next refresh (usage event, invoice, period rollover) opens the windows as a backup.
+func (s *subscriptionService) openEntitlementGrantsAfterActivation(ctx context.Context, sub *subscription.Subscription) {
+	if sub.SubscriptionStatus != types.SubscriptionStatusActive && sub.SubscriptionStatus != types.SubscriptionStatusTrialing {
+		return
+	}
+	if s.EntitlementGrantRepo == nil || s.CustomerRepo == nil || s.MeterUsageRepo == nil {
+		return
+	}
+	if err := NewAlertService(s.ServiceParams).RefreshEntitlementGrantsForCustomer(ctx, sub.CustomerID); err != nil {
+		s.Logger.Error(ctx, "failed to open entitlement grants after subscription activation",
+			"error", err,
+			"subscription_id", sub.ID)
+	}
 }
 
 // triggerHubSpotDealSync starts the Temporal workflow that reconciles a subscription's line
@@ -5684,6 +5703,7 @@ func (s *subscriptionService) activateIncompleteSubscription(ctx context.Context
 			Mark(ierr.ErrDatabase)
 	}
 	NotifySubscriptionChanged(ctx, s.ServiceParams, sub.ID)
+	s.openEntitlementGrantsAfterActivation(ctx, sub)
 
 	s.Logger.Info(ctx, "successfully activated incomplete subscription",
 		"subscription_id", subscriptionID,
