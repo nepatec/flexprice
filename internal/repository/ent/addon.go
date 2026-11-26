@@ -313,6 +313,7 @@ func (r *addonRepository) Update(ctx context.Context, a *domainAddon.Addon) erro
 			addon.EnvironmentID(types.GetEnvironmentID(ctx)),
 		).
 		SetName(a.Name).
+		SetLookupKey(a.LookupKey).
 		SetDescription(a.Description).
 		SetStatus(string(a.Status)).
 		SetMetadata(a.Metadata).
@@ -330,6 +331,14 @@ func (r *addonRepository) Update(ctx context.Context, a *domainAddon.Addon) erro
 					"addon_id": a.ID,
 				}).
 				Mark(ierr.ErrNotFound)
+		}
+		if ent.IsConstraintError(err) {
+			return ierr.WithError(err).
+				WithHint("An addon with this lookup key already exists").
+				WithReportableDetails(map[string]any{
+					"lookup_key": a.LookupKey,
+				}).
+				Mark(ierr.ErrAlreadyExists)
 		}
 		return ierr.WithError(err).
 			WithHint("Failed to update addon").

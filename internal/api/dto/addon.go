@@ -44,6 +44,7 @@ func (r *CreateAddonRequest) ToAddon(ctx context.Context) *addon.Addon {
 // UpdateAddonRequest represents the request to update an addon
 type UpdateAddonRequest struct {
 	Name        *string                `json:"name,omitempty"`
+	LookupKey   *string                `json:"lookup_key,omitempty"`
 	Description *string                `json:"description,omitempty"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }

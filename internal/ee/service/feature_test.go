@@ -759,6 +759,18 @@ func (s *FeatureServiceSuite) TestUpdateFeature() {
 			},
 		},
 		{
+			name: "successful update of lookup key",
+			id:   s.testData.features.boolean.ID,
+			req:  dto.UpdateFeatureRequest{LookupKey: lo.ToPtr("renamed-boolean")},
+		},
+		{
+			name:      "error - empty lookup key",
+			id:        s.testData.features.boolean.ID,
+			req:       dto.UpdateFeatureRequest{LookupKey: lo.ToPtr("")},
+			wantErr:   true,
+			errString: "lookup_key must not be empty",
+		},
+		{
 			name: "successful update with alert settings",
 			id:   s.testData.features.apiCalls.ID,
 			req: dto.UpdateFeatureRequest{
@@ -1014,6 +1026,9 @@ func (s *FeatureServiceSuite) TestUpdateFeature() {
 			}
 			if tt.req.Description != nil {
 				s.Equal(*tt.req.Description, resp.Description)
+			}
+			if tt.req.LookupKey != nil {
+				s.Equal(*tt.req.LookupKey, resp.LookupKey)
 			}
 			if tt.req.Metadata != nil {
 				s.Equal(*tt.req.Metadata, resp.Metadata)

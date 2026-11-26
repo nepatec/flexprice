@@ -336,6 +336,14 @@ func (s *addonService) UpdateAddon(ctx context.Context, id string, req dto.Updat
 	if req.Name != nil {
 		domainAddon.Name = *req.Name
 	}
+	if req.LookupKey != nil {
+		if *req.LookupKey == "" {
+			return nil, ierr.NewError("lookup_key must not be empty").
+				WithHint("Please provide a non-empty lookup key").
+				Mark(ierr.ErrValidation)
+		}
+		domainAddon.LookupKey = *req.LookupKey
+	}
 	if req.Description != nil {
 		domainAddon.Description = *req.Description
 	}

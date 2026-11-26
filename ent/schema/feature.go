@@ -34,8 +34,7 @@ func (Feature) Fields() []ent.Field {
 		field.String("lookup_key").
 			SchemaType(map[string]string{
 				"postgres": "varchar(255)",
-			}).
-			Immutable(),
+			}),
 		field.String("name").
 			SchemaType(map[string]string{
 				"postgres": "varchar(255)",

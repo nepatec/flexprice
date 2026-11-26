@@ -40,7 +40,6 @@ func (Addon) Fields() []ent.Field {
 			SchemaType(map[string]string{
 				"postgres": "varchar(255)",
 			}).
-			Immutable().
 			NotEmpty(),
 
 		field.String("name").

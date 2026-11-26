@@ -280,6 +280,7 @@ func (r *featureRepository) Update(ctx context.Context, f *domainFeature.Feature
 			feature.EnvironmentID(types.GetEnvironmentID(ctx)),
 		).
 		SetName(f.Name).
+		SetLookupKey(f.LookupKey).
 		SetDescription(f.Description).
 		SetStatus(string(f.Status)).
 		SetUnitSingular(f.UnitSingular).
@@ -321,6 +322,14 @@ func (r *featureRepository) Update(ctx context.Context, f *domainFeature.Feature
 					"feature_id": f.ID,
 				}).
 				Mark(ierr.ErrNotFound)
+		}
+		if ent.IsConstraintError(err) {
+			return ierr.WithError(err).
+				WithHint("A feature with this lookup key already exists").
+				WithReportableDetails(map[string]any{
+					"lookup_key": f.LookupKey,
+				}).
+				Mark(ierr.ErrAlreadyExists)
 		}
 		return ierr.WithError(err).
 			WithHint("Failed to update feature").

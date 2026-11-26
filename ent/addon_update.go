@@ -70,6 +70,20 @@ func (_u *AddonUpdate) ClearUpdatedBy() *AddonUpdate {
 	return _u
 }
 
+// SetLookupKey sets the "lookup_key" field.
+func (_u *AddonUpdate) SetLookupKey(v string) *AddonUpdate {
+	_u.mutation.SetLookupKey(v)
+	return _u
+}
+
+// SetNillableLookupKey sets the "lookup_key" field if the given value is not nil.
+func (_u *AddonUpdate) SetNillableLookupKey(v *string) *AddonUpdate {
+	if v != nil {
+		_u.SetLookupKey(*v)
+	}
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *AddonUpdate) SetName(v string) *AddonUpdate {
 	_u.mutation.SetName(v)
@@ -231,6 +245,11 @@ func (_u *AddonUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *AddonUpdate) check() error {
+	if v, ok := _u.mutation.LookupKey(); ok {
+		if err := addon.LookupKeyValidator(v); err != nil {
+			return &ValidationError{Name: "lookup_key", err: fmt.Errorf(`ent: validator failed for field "Addon.lookup_key": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Name(); ok {
 		if err := addon.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Addon.name": %w`, err)}
@@ -268,6 +287,9 @@ func (_u *AddonUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.EnvironmentIDCleared() {
 		_spec.ClearField(addon.FieldEnvironmentID, field.TypeString)
+	}
+	if value, ok := _u.mutation.LookupKey(); ok {
+		_spec.SetField(addon.FieldLookupKey, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(addon.FieldName, field.TypeString, value)
@@ -431,6 +453,20 @@ func (_u *AddonUpdateOne) SetNillableUpdatedBy(v *string) *AddonUpdateOne {
 // ClearUpdatedBy clears the value of the "updated_by" field.
 func (_u *AddonUpdateOne) ClearUpdatedBy() *AddonUpdateOne {
 	_u.mutation.ClearUpdatedBy()
+	return _u
+}
+
+// SetLookupKey sets the "lookup_key" field.
+func (_u *AddonUpdateOne) SetLookupKey(v string) *AddonUpdateOne {
+	_u.mutation.SetLookupKey(v)
+	return _u
+}
+
+// SetNillableLookupKey sets the "lookup_key" field if the given value is not nil.
+func (_u *AddonUpdateOne) SetNillableLookupKey(v *string) *AddonUpdateOne {
+	if v != nil {
+		_u.SetLookupKey(*v)
+	}
 	return _u
 }
 
@@ -608,6 +644,11 @@ func (_u *AddonUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *AddonUpdateOne) check() error {
+	if v, ok := _u.mutation.LookupKey(); ok {
+		if err := addon.LookupKeyValidator(v); err != nil {
+			return &ValidationError{Name: "lookup_key", err: fmt.Errorf(`ent: validator failed for field "Addon.lookup_key": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Name(); ok {
 		if err := addon.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Addon.name": %w`, err)}
@@ -662,6 +703,9 @@ func (_u *AddonUpdateOne) sqlSave(ctx context.Context) (_node *Addon, err error)
 	}
 	if _u.mutation.EnvironmentIDCleared() {
 		_spec.ClearField(addon.FieldEnvironmentID, field.TypeString)
+	}
+	if value, ok := _u.mutation.LookupKey(); ok {
+		_spec.SetField(addon.FieldLookupKey, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(addon.FieldName, field.TypeString, value)

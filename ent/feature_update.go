@@ -70,6 +70,20 @@ func (_u *FeatureUpdate) ClearUpdatedBy() *FeatureUpdate {
 	return _u
 }
 
+// SetLookupKey sets the "lookup_key" field.
+func (_u *FeatureUpdate) SetLookupKey(v string) *FeatureUpdate {
+	_u.mutation.SetLookupKey(v)
+	return _u
+}
+
+// SetNillableLookupKey sets the "lookup_key" field if the given value is not nil.
+func (_u *FeatureUpdate) SetNillableLookupKey(v *string) *FeatureUpdate {
+	if v != nil {
+		_u.SetLookupKey(*v)
+	}
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *FeatureUpdate) SetName(v string) *FeatureUpdate {
 	_u.mutation.SetName(v)
@@ -362,6 +376,9 @@ func (_u *FeatureUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.EnvironmentIDCleared() {
 		_spec.ClearField(feature.FieldEnvironmentID, field.TypeString)
 	}
+	if value, ok := _u.mutation.LookupKey(); ok {
+		_spec.SetField(feature.FieldLookupKey, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(feature.FieldName, field.TypeString, value)
 	}
@@ -482,6 +499,20 @@ func (_u *FeatureUpdateOne) SetNillableUpdatedBy(v *string) *FeatureUpdateOne {
 // ClearUpdatedBy clears the value of the "updated_by" field.
 func (_u *FeatureUpdateOne) ClearUpdatedBy() *FeatureUpdateOne {
 	_u.mutation.ClearUpdatedBy()
+	return _u
+}
+
+// SetLookupKey sets the "lookup_key" field.
+func (_u *FeatureUpdateOne) SetLookupKey(v string) *FeatureUpdateOne {
+	_u.mutation.SetLookupKey(v)
+	return _u
+}
+
+// SetNillableLookupKey sets the "lookup_key" field if the given value is not nil.
+func (_u *FeatureUpdateOne) SetNillableLookupKey(v *string) *FeatureUpdateOne {
+	if v != nil {
+		_u.SetLookupKey(*v)
+	}
 	return _u
 }
 
@@ -806,6 +837,9 @@ func (_u *FeatureUpdateOne) sqlSave(ctx context.Context) (_node *Feature, err er
 	}
 	if _u.mutation.EnvironmentIDCleared() {
 		_spec.ClearField(feature.FieldEnvironmentID, field.TypeString)
+	}
+	if value, ok := _u.mutation.LookupKey(); ok {
+		_spec.SetField(feature.FieldLookupKey, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(feature.FieldName, field.TypeString, value)

@@ -105,6 +105,7 @@ func (r *CreateFeatureRequest) ToFeature(ctx context.Context) (*feature.Feature,
 
 type UpdateFeatureRequest struct {
 	Name          *string              `json:"name,omitempty"`
+	LookupKey     *string              `json:"lookup_key,omitempty"`
 	Description   *string              `json:"description,omitempty"`
 	Metadata      *types.Metadata      `json:"metadata,omitempty"`
 	UnitSingular  *string              `json:"unit_singular,omitempty"`
