@@ -200,6 +200,9 @@ func (s *taxService) UpdateTaxRate(ctx context.Context, id string, req dto.Updat
 		return nil, err
 	}
 
+	// Metadata is not used in tax calculations, so a metadata-only update is allowed on a tax rate in use.
+	metadataOnly := req.Name == "" && req.Code == "" && req.Description == "" && req.TaxRateStatus == nil
+
 	// check is tax rate is being used in any tax assignments
 	taxAssociationFilter := types.NewTaxAssociationFilter()
 	taxAssociationFilter.TaxRateIDs = []string{id}
@@ -213,7 +216,7 @@ func (s *taxService) UpdateTaxRate(ctx context.Context, id string, req dto.Updat
 		return nil, err
 	}
 
-	if len(taxAssociations) > 0 {
+	if !metadataOnly && len(taxAssociations) > 0 {
 		s.Logger.Info(ctx, "tax rate is being used in tax assignments, cannot update",
 			"tax_rate_id", id,
 		)
@@ -235,7 +238,7 @@ func (s *taxService) UpdateTaxRate(ctx context.Context, id string, req dto.Updat
 		return nil, err
 	}
 
-	if len(taxAppliedRecords) > 0 {
+	if !metadataOnly && len(taxAppliedRecords) > 0 {
 		s.Logger.Info(ctx, "tax rate is being used in tax applied records, cannot update",
 			"tax_rate_id", id,
 		)
@@ -263,7 +266,8 @@ func (s *taxService) UpdateTaxRate(ctx context.Context, id string, req dto.Updat
 		taxRate.Description = req.Description
 	}
 
-	if len(req.Metadata) > 0 {
+	// Non-nil metadata (also an empty map) replaces the stored metadata, so all keys can be removed
+	if req.Metadata != nil {
 		taxRate.Metadata = req.Metadata
 	}
 
